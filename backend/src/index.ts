@@ -17,15 +17,17 @@ wss.on("connection", function (ws) {
       if (!senderSocket) {
         senderSocket = ws;
       }
-    } else if (message.type === "receiever") {
+      console.log("Sender set");
+    } else if (message.type === "receiver") {
       if (!receiverSocket) {
         receiverSocket = ws;
       }
+      console.log("Receiver set");
     } else if (message.type === "createOffer") {
       if (ws !== senderSocket) {
         return;
       }
-
+      console.log("Create offer");
       receiverSocket?.send(
         JSON.stringify({ type: "createOffer", sdp: message.sdp })
       );
@@ -33,30 +35,34 @@ wss.on("connection", function (ws) {
       if (ws !== receiverSocket) {
         return;
       }
-
+      console.log("Create answer!");
       senderSocket?.send(
         JSON.stringify({ type: "createAnswer", sdp: message.sdp })
       );
-    } else if (message.type === "iceCanditates") {
+    } else if (message.type === "iceCandidate") {
       if (ws === senderSocket) {
         receiverSocket?.send(
           JSON.stringify({
-            type: "iceCanditates",
+            type: "iceCandidate",
             iceType: "senderIce",
-            iceCandidates: message.iceCandidates,
+            iceCandidate: message.iceCandidates,
           })
         );
       } else if (ws === receiverSocket) {
         senderSocket?.send(
           JSON.stringify({
-            type: "iceCanditates",
+            type: "iceCandidate",
             iceType: "receiverIce",
-            iceCandidates: message.iceCandidates,
+            iceCandidate: message.iceCandidates,
           })
         );
       }
     }
   });
 
-  ws.send("Connected!");
+  ws.send(
+    JSON.stringify({
+      message: "Connected",
+    })
+  );
 });

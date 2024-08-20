@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 export const Sender = () => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [pc, setPC] = useState<RTCPeerConnection | null>(null);
 
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8080");
@@ -12,15 +11,46 @@ export const Sender = () => {
     };
   }, []);
 
-  const initiateConnection = async () => {
+  const sendVideo = async () => {
     if (!socket) {
       alert("Socket not found!");
       return;
     }
 
     const pc = new RTCPeerConnection();
-    setPC(pc);
+
+    pc.onnegotiationneeded = async () => {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.send(
+        JSON.stringify({ type: "createOffer", sdp: pc.localDescription })
+      );
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.send(
+          JSON.stringify({ type: "iceCandidate", candidate: event.candidate })
+        );
+      }
+    };
+
+    socket.onmessage = async (event) => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === "createAnswer") {
+        await pc.setRemoteDescription(message.sdp);
+      } else if (message.type === "iceCandidate") {
+        await pc.addIceCandidate(message.iceCandidate);
+      }
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false,
+    });
+    pc.addTrack(stream.getVideoTracks()[0]);
   };
 
-  return <button onClick={initiateConnection}>Click me</button>;
+  return <button onClick={sendVideo}>Send video</button>;
 };
